@@ -1,13 +1,10 @@
 package com.loughmasta.loughapp;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.telephony.TelephonyManager;
@@ -16,22 +13,24 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
 import android.widget.TextView;
-
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import org.json.JSONObject;
-
-import java.io.EOFException;
-import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLConnection;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
-    public EditText titleTextEdit, commentTextEdit, albumIdTextEdit;
+    public static EditText titleTextEdit, commentTextEdit, albumIdTextEdit;
     public FloatingActionButton sendButton;
     public TelephonyManager tm;
     public String imei;
-    public SendContentToServer sendContentToServer;
+    public static RequestQueue queue;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +43,8 @@ public class MainActivity extends AppCompatActivity {
         tm = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
         //imei = tm.getDeviceId(); **NOT WORKING**
 
-        sendContentToServer = new SendContentToServer();
+        // Volley
+        queue = Volley.newRequestQueue(this);
 
         titleTextEdit = (EditText) findViewById(R.id.title);
         albumIdTextEdit = (EditText) findViewById(R.id.albumId);
@@ -54,16 +54,8 @@ public class MainActivity extends AppCompatActivity {
         sendButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                try{
-                    Exception tempException = sendContentToServer.execute(albumIdTextEdit.getText().toString()).get();
-                    if (tempException == null) {
-                        Snackbar.make(view, "Success", Snackbar.LENGTH_LONG)
-                                .setAction("Action", null).show();
-                    }
-                } catch (Exception e){
-                    Snackbar.make(view, "Failed To Send To Server: " + e.toString(), Snackbar.LENGTH_LONG)
-                            .setAction("Action", null).show();
-                }
+
+                SendContentToServer(albumIdTextEdit.getText().toString(), view);
             }
         });
 
@@ -107,31 +99,37 @@ public class MainActivity extends AppCompatActivity {
         albumIdTextEdit.setText(contentIP.getPostId().toString(), TextView.BufferType.EDITABLE);
     }
 
-    private class SendContentToServer extends AsyncTask<String, Integer, Exception>{
+    private static void SendContentToServer(final String albumId, final View view) {
 
-        @Override
-        protected Exception doInBackground(String... albumId){
+        String url = "http://loughmasta.com/submitImgurAlbum.php";
 
-            try{
-                //Creates JSON object
-                JSONObject tempObj = new JSONObject();
-                tempObj.put("albumId", albumId);
-
-                //Creates connection to URL
-                URL targetUrl = new URL("http://loughmasta.com/submitImgurAlbum.php");
-                HttpURLConnection conn = (HttpURLConnection) targetUrl.openConnection();
-                conn.setDoInput(true);
-                conn.setRequestMethod("POST");
-                conn.setConnectTimeout(500);
-                conn.setRequestProperty("Content_Type", "application/json; charset=UTF-8");
-                OutputStreamWriter writer = new OutputStreamWriter(conn.getOutputStream());
-                writer.write(tempObj.toString());
-                writer.flush();
-                writer.close();
-            } catch (Exception e){
-                return  e;
+        // Request a string response from the provided URL.
+        StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                Snackbar.make(view, "Success", Snackbar.LENGTH_LONG).setAction("Action", null).show();
             }
-            return null;
-        }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Snackbar.make(view, "Failed to Send: " + error.getMessage(), Snackbar.LENGTH_LONG).setAction("Action", null).show();
+            }
+        }) {
+            @Override
+            protected Map<String, String> getParams() {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("albumId", albumId);
+
+                return params;
+            }
+
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("Content-Type", "application/x-www-form-urlencoded");
+                return params;
+            }
+        };
+        queue.add(stringRequest);
     }
 }

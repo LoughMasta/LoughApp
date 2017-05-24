@@ -14,13 +14,18 @@ import android.view.MenuItem;
 import android.widget.EditText;
 import android.widget.TextView;
 import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkResponse;
+import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.HttpHeaderParser;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import org.json.JSONException;
 import org.json.JSONObject;
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     public TelephonyManager tm;
     public String imei;
     public static RequestQueue queue;
+    public static JSONObject jsonObject;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,33 +109,60 @@ public class MainActivity extends AppCompatActivity {
 
         String url = "http://loughmasta.com/submitImgurAlbum.php";
 
-        // Request a string response from the provided URL.
-        StringRequest stringRequest = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+        jsonObject = new JSONObject();
+        try{
+            jsonObject.put("albumId", albumId);
+        }catch (JSONException error){
+
+        }
+
+        JsonObjectRequest jsonObjRequest = new JsonObjectRequest(Request.Method.POST, url, jsonObject, new Response.Listener<JSONObject>() {
             @Override
-            public void onResponse(String response) {
+            public void onResponse(JSONObject response) {
                 Snackbar.make(view, "Success", Snackbar.LENGTH_LONG).setAction("Action", null).show();
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
                 Snackbar.make(view, "Failed to Send: " + error.getMessage(), Snackbar.LENGTH_LONG).setAction("Action", null).show();
+                commentTextEdit.setText(error.getMessage());
             }
         }) {
-            @Override
-            protected Map<String, String> getParams() {
-                Map<String, String> params = new HashMap<String, String>();
-                params.put("albumId", albumId);
-
-                return params;
-            }
 
             @Override
             public Map<String, String> getHeaders() throws AuthFailureError {
                 Map<String, String> params = new HashMap<String, String>();
-                params.put("Content-Type", "application/x-www-form-urlencoded");
+                params.put("Content-Type", "application/json; charset=utf-8");
                 return params;
             }
+            @Override
+            public Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
+
+
+                try {
+                    String json = new String(
+                            response.data,
+                            "UTF-8"
+                    );
+
+                    if (json.length() == 0) {
+                        return Response.success(
+                                null,
+                                HttpHeaderParser.parseCacheHeaders(response)
+                        );
+                    }
+                    else {
+                        return super.parseNetworkResponse(response);
+                    }
+                }
+                catch (UnsupportedEncodingException e) {
+                    return Response.error(new ParseError(e));
+                }
+
+
+            }
         };
-        queue.add(stringRequest);
+        RequestQueue requestQueue = Volley.newRequestQueue(view.getContext());
+        requestQueue.add(jsonObjRequest);
     }
 }

@@ -25,29 +25,15 @@
             android:layout_height="15pt"
             android:text="Title"
             android:textSize="20dp" />
-
         <EditText
             android:layout_width="match_parent"
             android:layout_height="35pt"
             android:id="@+id/title" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="15pt"
-            android:text="Comment"
-            android:textSize="20dp" />
-
-        <EditText
-            android:layout_width="match_parent"
-            android:layout_height="60pt"
-            android:id="@+id/comment" />
-
         <TextView
             android:layout_width="match_parent"
             android:layout_height="15pt"
             android:text="Post id"
             android:textSize="20dp"/>
-
         <EditText
             android:layout_width="match_parent"
             android:layout_height="40pt"

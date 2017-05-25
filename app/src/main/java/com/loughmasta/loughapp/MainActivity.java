@@ -1,5 +1,6 @@
 package com.loughmasta.loughapp;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -31,12 +32,13 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static EditText titleTextEdit, commentTextEdit, albumIdTextEdit;
+    public static EditText titleTextEdit, albumIdTextEdit;
     public FloatingActionButton sendButton;
     public TelephonyManager tm;
     public String imei;
     public static RequestQueue queue;
     public static JSONObject jsonObject;
+    public static Activity activity;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,23 +46,21 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        Activity activity = this;
 
         //Used to get IMEI for verification
         tm = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
         //imei = tm.getDeviceId(); **NOT WORKING**
-
         // Volley
         queue = Volley.newRequestQueue(this);
 
         titleTextEdit = (EditText) findViewById(R.id.title);
         albumIdTextEdit = (EditText) findViewById(R.id.albumId);
-        commentTextEdit = (EditText) findViewById(R.id.comment);
 
         sendButton = (FloatingActionButton) findViewById(R.id.sendButton);
         sendButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
                 SendContentToServer(albumIdTextEdit.getText().toString(), view);
             }
         });
@@ -105,10 +105,10 @@ public class MainActivity extends AppCompatActivity {
         albumIdTextEdit.setText(contentIP.getPostId().toString(), TextView.BufferType.EDITABLE);
     }
 
-    private static void SendContentToServer(final String albumId, final View view) {
+    private static boolean SendContentToServer(final String albumId, final View view) {
 
         String url = "http://loughmasta.com/submitImgurAlbum.php";
-
+        boolean success = false;
         jsonObject = new JSONObject();
         try{
             jsonObject.put("albumId", albumId);
@@ -120,12 +120,12 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(JSONObject response) {
                 Snackbar.make(view, "Success", Snackbar.LENGTH_LONG).setAction("Action", null).show();
+                //final success = true;
             }
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
                 Snackbar.make(view, "Failed to Send: " + error.getMessage(), Snackbar.LENGTH_LONG).setAction("Action", null).show();
-                commentTextEdit.setText(error.getMessage());
             }
         }) {
 
@@ -135,16 +135,14 @@ public class MainActivity extends AppCompatActivity {
                 params.put("Content-Type", "application/json; charset=utf-8");
                 return params;
             }
+            //Expects no return from connection
             @Override
             public Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
-
-
                 try {
                     String json = new String(
                             response.data,
                             "UTF-8"
                     );
-
                     if (json.length() == 0) {
                         return Response.success(
                                 null,
@@ -158,11 +156,10 @@ public class MainActivity extends AppCompatActivity {
                 catch (UnsupportedEncodingException e) {
                     return Response.error(new ParseError(e));
                 }
-
-
             }
         };
         RequestQueue requestQueue = Volley.newRequestQueue(view.getContext());
         requestQueue.add(jsonObjRequest);
+        return success;
     }
 }
